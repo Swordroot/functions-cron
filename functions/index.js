@@ -13,8 +13,52 @@
 // limitations under the License.
 
 var functions = require('firebase-functions');
+var admin = require('firebase-admin');
+admin.initializeApp(functions.config().firebase);
 
-exports.hourly_job =
-  functions.pubsub.topic('hourly-tick').onPublish((event) => {
-    console.log("This job is ran every hour!")
+
+
+exports.per_minute_job = functions.pubsub
+  .topic('per-minute')
+  .onPublish(event => {
+    console.log('=-=-=-=-=-=-=-=-=-=-start deleting expired room-=-=-=-=-=-=-=-=-=-=');
+    const query = admin.database().ref('rooms').orderByKey();
+    const usersQuery = admin.database().ref('users').orderByKey();
+    Promise.all([query,usersQuery])
+    usersQuery.once('value').then(usersSnapshot => {
+      usersSnapshot.forEach(userSnapshot => {
+        userSnapshot.val()
+      });
+    });
+    query.once('value').then(snapshot => {
+      let deleteTargetRoomKey = [];
+      snapshot.forEach(childSnapShot => {
+        const data = childSnapShot.val();
+        const nowTime = new Date().getTime();
+        if((nowTime / 1000 - data.remainingTime) > 60*60*24){
+          deleteTargetRoomKey.push(childSnapShot.key)
+        }
+      });
+      console.log(deleteTargetRoomKey);
+
+      if (deleteTargetRoomKey.length > 0){
+        let refsArray = [];
+        const usersQuery = admin.database().ref('users').orderByKey();
+        usersQuery.once('value').then(usersSnapshot => {
+          usersSnapshot.forEach(userSnapshot => {
+            userSnapshot.val()
+          });
+        });
+        // deleteTargetRoomKey.forEach(key => {
+        //   const roomsRef = admin.database().ref('rooms/' + key);
+        //   const messagesRef = admin.database().ref('messages/' + key);
+          
+        //   roomsRef.remove();
+        //   messagesRef.remove();
+
+          
+        // });
+      }
+    });
+    console.log('=-=-=-=-=-=-=-=-=-=-finish deleting expired room-=-=-=-=-=-=-=-=-=-=');
   });
