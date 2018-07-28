@@ -1,3 +1,6 @@
+# this is forked and edited repository by Swordroot
+After this section, same contents as base repository.
+
 # App Engine Cron with Google Cloud Functions for Firebase
 Google App Engine provides a Cron service. Using this service for scheduling and
 Google Cloud Pub/Sub for distributed messaging, you can build an application to
