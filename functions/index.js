@@ -14,62 +14,142 @@
 
 var functions = require('firebase-functions');
 var admin = require('firebase-admin');
+var request = require('request');
+var rcloadenv = require('@google-cloud/rcloadenv');
+var {google} = require('googleapis');
 admin.initializeApp(functions.config().firebase);
 
 
 
 exports.per_minute_job = functions.pubsub
-  .topic('per-minute')
-  .onPublish(event => {
-    console.log('=-=-=-=-=-=-=-=-=-=-start deleting expired room-=-=-=-=-=-=-=-=-=-=');
-    const query = admin.database().ref('rooms').orderByKey();
-    const usersQuery = admin.database().ref('users').orderByKey();
-    query.once('value').then(snapshot => {
-      //set expire time limit
-      const expireTimeLimit = 60 * 60 * 24;
-      //first find expiredRoom
-      let deleteTargetRoomKey = [];
-      snapshot.forEach(childSnapShot => {
-        const data = childSnapShot.val();
-        const nowTime = new Date().getTime();
-        if((nowTime / 1000 - data.remainingTime) > expireTimeLimit){
-          deleteTargetRoomKey.push(childSnapShot.key)
-        }
-      });
-
-      //if found expired room, delete relatedData
-      if (deleteTargetRoomKey.length > 0){
-        let promisesArray = [];
-        const usersQuery = admin.database().ref('users').orderByKey();
-        usersQuery.once('value').then(usersSnapshot => {
-          usersSnapshot.forEach(userSnapshot => {
-            const userData = userSnapshot.val();
-            if(userData.rooms){
-              const filteredRoomsRemovePromises = Object.keys(userData.rooms).filter( elem => {
-                return deleteTargetRoomKey.includes(elem);
-              }).map( elem => {
-                console.log('users/' + userSnapshot.key + '/rooms/' + elem);
-                return admin.database().ref('users/' + userSnapshot.key + '/rooms/' + elem).remove();
-              });
-              promisesArray = promisesArray.concat(filteredRoomsRemovePromises)
-            }
-          });
-          deleteTargetRoomKey.forEach(key => {
-            console.log('rooms/' + key);
-            console.log('messages/' + key);
-            const roomsRef = admin.database().ref('rooms/' + key);
-            const messagesRef = admin.database().ref('messages/' + key);
-            
-            promisesArray.push(roomsRef.remove());
-            promisesArray.push(messagesRef.remove());
-          });
-          Promise.all(promisesArray, () => {
-            console.log('=-=-=-=-=-=-=-=-=-=-finish deleting expired room-=-=-=-=-=-=-=-=-=-=');
-          });
-        });
-      }else{
-        console.log('=-=-=-=-=-=-=-=-=-=-not found expired room-=-=-=-=-=-=-=-=-=-=');
+.topic('per-minute')
+.onPublish(event => {
+  console.log('=-=-=-=-=-=-=-=-=-=-start deleting expired room-=-=-=-=-=-=-=-=-=-=');
+  const query = admin.database().ref('rooms').orderByKey();
+  const usersQuery = admin.database().ref('users').orderByKey();
+  query.once('value').then(snapshot => {
+    //set expire time limit
+    const expireTimeLimit = 60 * 60 * 24;
+    //first find expiredRoom
+    let deleteTargetRoomKey = [];
+    snapshot.forEach(childSnapShot => {
+      const data = childSnapShot.val();
+      const nowTime = new Date().getTime();
+      if((nowTime / 1000 - data.remainingTime) > expireTimeLimit){
+        deleteTargetRoomKey.push(childSnapShot.key)
       }
+    });
+
+    //if found expired room, delete relatedData
+    if (deleteTargetRoomKey.length > 0){
+      let promisesArray = [];
+      const usersQuery = admin.database().ref('users').orderByKey();
+      usersQuery.once('value').then(usersSnapshot => {
+        usersSnapshot.forEach(userSnapshot => {
+          const userData = userSnapshot.val();
+          if(userData.rooms){
+            const filteredRoomsRemovePromises = Object.keys(userData.rooms).filter( elem => {
+              return deleteTargetRoomKey.includes(elem);
+            }).map( elem => {
+              console.log('users/' + userSnapshot.key + '/rooms/' + elem);
+              return admin.database().ref('users/' + userSnapshot.key + '/rooms/' + elem).remove();
+            });
+            promisesArray = promisesArray.concat(filteredRoomsRemovePromises)
+          }
+        });
+        deleteTargetRoomKey.forEach(key => {
+          console.log('rooms/' + key);
+          console.log('messages/' + key);
+          const roomsRef = admin.database().ref('rooms/' + key);
+          const messagesRef = admin.database().ref('messages/' + key);
+          
+          promisesArray.push(roomsRef.remove());
+          promisesArray.push(messagesRef.remove());
+        });
+        Promise.all(promisesArray, () => {
+          console.log('=-=-=-=-=-=-=-=-=-=-finish deleting expired room-=-=-=-=-=-=-=-=-=-=');
+        });
+      });
+    }else{
+      console.log('=-=-=-=-=-=-=-=-=-=-not found expired room-=-=-=-=-=-=-=-=-=-=');
+    }
+  });
+  
+});
+
+function getAccessToken() {
+  return new Promise(function(resolve, reject) {
+    rcloadenv.getAndApply('pushAPI', {}).then(key => {
+      console.log(key);
+      var jwtClient = new google.auth.JWT(
+        key.client_email,
+        null,
+        key.private_key,
+        ['https://www.googleapis.com/auth/firebase.messaging'],
+        null
+      );
+      jwtClient.authorize(function(err, tokens) {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(tokens.access_token);
+      });
     });
     
   });
+}
+
+exports.sendPushNoti = functions.https.onRequest((req, res) => {
+  if (req.method === 'POST'){
+    console.log(req.body);
+    getAccessToken().then((authToken) => {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + authToken
+      };
+      const options = {
+        url: 'https://fcm.googleapis.com/v1/projects/confession-room-frx/messages:send',
+        method: 'POST',
+        headers: headers,
+        json: {
+          "message": {
+            "token": req.body.message.token,
+            "notification": {
+              "body": req.body.message.notification.body,
+              "title": req.body.message.notification.title
+            }
+          }
+        }
+      };
+      new Promise((resolve2, reject2) => {
+        request(options, function (error, response, body) {
+          if (response.statusCode === 200) {
+            return resolve2({
+              error,
+              response,
+              body
+            });
+          } else {
+            return reject2({
+              error,
+              response,
+              body
+            });
+          }
+        });
+      }).then(result => {
+        res.status(200).send(result).end();
+      }).catch(err => {
+        res.status(500).send(err).end();
+      });
+    }).catch(err => {
+      console.log("failed getAccessToken");
+      console.log(err);
+      res.status(500).send(err).end();
+    });
+  } else {
+    res.status(404).end();
+  }
+});
+
