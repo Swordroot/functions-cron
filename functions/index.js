@@ -17,6 +17,7 @@ var admin = require('firebase-admin');
 var request = require('request');
 var rcloadenv = require('@google-cloud/rcloadenv');
 var {google} = require('googleapis');
+var changesets = require('diff-json');
 admin.initializeApp(functions.config().firebase);
 
 
@@ -152,4 +153,80 @@ exports.sendPushNoti = functions.https.onRequest((req, res) => {
     res.status(404).end();
   }
 });
+
+const sendPushNotiOnLocal = (snapshot, context) => {
+  //console.log('before', snapshot.before.val());
+  //console.log('after', snapshot.after.val());
+  const diff = changesets.diff(snapshot.before.val(), snapshot.after.val());
+  console.log('diff', diff);
+  console.log('diff[0]', diff[0]);
+  console.log('change', diff[0].changes);
+  const roomId = diff[0].key;
+  const senderId = diff[0].changes[0].value.senderId;
+  const text = diff[0].changes[0].value.text;
+  const query = admin.database().ref('rooms/' + roomId);
+  query.once('value').then( snapshot2 => {
+    const roominfo = snapshot2.val();
+    console.log('updatedRoom:', roominfo);
+    const targetID = (roominfo.listenID === senderId) ? roominfo.speakID : roominfo.listenID;
+    admin.database().ref('users/' + targetID).once('value').then(snapshot3 => {
+      const userInfo = snapshot3.val();
+      const targetToken = userInfo.fcmtoken;
+      const notiBody = {
+        "message": {
+          "token": targetToken,
+          "notification": {
+            "body": text,
+            "title": "shabon"
+          }
+        }
+      }
+      console.log("notibody", notiBody);
+      getAccessToken().then((authToken) => {
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + authToken
+        };
+        const options = {
+          url: 'https://fcm.googleapis.com/v1/projects/confession-room-frx/messages:send',
+          method: 'POST',
+          headers: headers,
+          json: notiBody
+        };
+        new Promise((resolve2, reject2) => {
+          request(options, function (error, response, body) {
+            if (response.statusCode === 200) {
+              return resolve2({
+                error,
+                response,
+                body
+              });
+            } else {
+              return reject2({
+                error,
+                response,
+                body
+              });
+            }
+          });
+        }).then(result => {
+          console.log("successfully sent push noti:", result);
+        }).catch(err => {
+          console.log("failed to send push noti", result)
+        });
+      }).catch(err => {
+        console.log("failed getAccessToken");
+        console.log(err);
+      });
+    }).catch(err2 => {
+      console.log('error on users/:targetID once', err2);
+    })
+  }).catch( err => {
+    console.log('error on rooms/:roomId once', err);
+  });
+  
+}
+
+exports.sendPushNotiTriggeredByDBUpdate = functions.database.ref('messages').onUpdate(sendPushNotiOnLocal);
+
 
