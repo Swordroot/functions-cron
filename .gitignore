@@ -1,3 +1,4 @@
 appengine/lib/**
 /node_modules/
 /functions/node_modules
+/functions/confession-room-frx-firebase-adminsdk-6vfev-37636b5016.json
