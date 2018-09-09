@@ -168,6 +168,7 @@ const sendPushNotiOnLocal = (snapshot, context) => {
   query.once('value').then( snapshot2 => {
     const roominfo = snapshot2.val();
     console.log('updatedRoom:', roominfo);
+    const roomName = roomInfo.roomName;
     const targetID = (roominfo.listenID === senderId) ? roominfo.speakID : roominfo.listenID;
     admin.database().ref('users/' + targetID).once('value').then(snapshot3 => {
       const userInfo = snapshot3.val();
@@ -177,7 +178,7 @@ const sendPushNotiOnLocal = (snapshot, context) => {
           "token": targetToken,
           "notification": {
             "body": text,
-            "title": "shabon"
+            "title": roomName
           }
         }
       }

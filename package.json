@@ -1,0 +1,25 @@
+{
+  "name": "functions-cron",
+  "version": "1.0.0",
+  "description": "After this section, same contents as base repository.",
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^5.13.0",
+    "googleapis": "^32.0.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "test",
+    "deploy": "firebase deploy --only functions --project confession-room-frx"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Swordroot/functions-cron.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Swordroot/functions-cron/issues"
+  },
+  "homepage": "https://github.com/Swordroot/functions-cron#readme"
+}
