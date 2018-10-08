@@ -57,6 +57,8 @@ export const per_minute_job = event => {
         }).catch(error => {
           throw error;
         });
+      }).catch(error => {
+        throw error;
       });
     }else{
       console.log('=-=-=-=-=-=-=-=-=-=-not found expired room-=-=-=-=-=-=-=-=-=-=');

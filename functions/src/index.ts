@@ -13,7 +13,8 @@
 // limitations under the License.
 
 import * as functions from 'firebase-functions';
-import * as deleteExpireRoom from './deleteExpireRoom.js';
+import * as deleteExpireRoom from './deleteExpireRoom';
+import * as aggregate from './aggregate'
 
 export const per_minute_job = functions.pubsub
 .topic('per-minute')
@@ -23,5 +24,9 @@ export const sendPushNoti = functions.https.onRequest(deleteExpireRoom.sendPushN
 
 
 export const sendPushNotiTriggeredByDBUpdate = functions.database.ref('messages').onUpdate(deleteExpireRoom.sendPushNotiOnLocal);
+
+export const aggegate_roomsCount = functions.pubsub.topic('aggregate-tick').onPublish(aggregate.aggregate_rooms_count_all);
+export const aggegate_rooms_per_user = functions.pubsub.topic('aggregate-tick').onPublish(aggregate.aggregate_rooms_per_user);
+export const aggegate_rooms_per_user_avg = functions.pubsub.topic('aggregate-tick').onPublish(aggregate.aggregate_rooms_per_user_avg);
 
 

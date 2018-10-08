@@ -5,4 +5,4 @@ cron:
 
 - description: Push a "tick" onto pubsub every 0:00;
   url: /publish/aggregate-tick
-  schedule: every day 7:00
+  schedule: every day 15:00
