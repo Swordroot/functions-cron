@@ -7,7 +7,7 @@ const admin = adminModule.admin;
 
 
 
-exports.per_minute_job = event => {
+export const per_minute_job = event => {
   console.log('=-=-=-=-=-=-=-=-=-=-start deleting expired room-=-=-=-=-=-=-=-=-=-=');
   const query = admin.database().ref('rooms').orderByKey();
   // const usersQuery = admin.database().ref('users').orderByKey();
@@ -90,7 +90,7 @@ function getAccessToken() {
   });
 }
 
-exports.sendPushNoti = (req, res) => {
+export const sendPushNoti = (req, res) => {
   if (req.method === 'POST'){
     console.log(req.body);
     getAccessToken().then((authToken) => {
@@ -143,7 +143,7 @@ exports.sendPushNoti = (req, res) => {
   }
 }
 
-exports.sendPushNotiOnLocal = (snapshot, context) => {
+export const sendPushNotiOnLocal = (snapshot, context) => {
   //console.log('before', snapshot.before.val());
   //console.log('after', snapshot.after.val());
   const diff = changesets.diff(snapshot.before.val(), snapshot.after.val());

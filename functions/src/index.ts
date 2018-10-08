@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const functions = require('firebase-functions');
-const deleteExpireRoom = require('./deleteExpireRoom.js');
+import * as functions from 'firebase-functions';
+import * as deleteExpireRoom from './deleteExpireRoom.js';
 
 export const per_minute_job = functions.pubsub
 .topic('per-minute')
