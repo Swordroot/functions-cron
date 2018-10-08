@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var functions = require('firebase-functions');
-var deleteExpireRoom = require('./deleteExpireRoom.js');
+const functions = require('firebase-functions');
+const deleteExpireRoom = require('./deleteExpireRoom.js');
 
-exports.per_minute_job = functions.pubsub
+export const per_minute_job = functions.pubsub
 .topic('per-minute')
 .onPublish(deleteExpireRoom.per_minute_job);
 
-exports.sendPushNoti = functions.https.onRequest(deleteExpireRoom.sendPushNoti);
+export const sendPushNoti = functions.https.onRequest(deleteExpireRoom.sendPushNoti);
 
 
-exports.sendPushNotiTriggeredByDBUpdate = functions.database.ref('messages').onUpdate(deleteExpireRoom.sendPushNotiOnLocal);
+export const sendPushNotiTriggeredByDBUpdate = functions.database.ref('messages').onUpdate(deleteExpireRoom.sendPushNotiOnLocal);
 
 

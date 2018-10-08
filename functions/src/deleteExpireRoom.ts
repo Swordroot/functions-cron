@@ -1,45 +1,47 @@
-var adminModule = require('./admin.js');
-var request = require('request');
-var rcloadenv = require('@google-cloud/rcloadenv');
-var {google} = require('googleapis');
-var changesets = require('diff-json');
-var admin = adminModule.admin;
+import * as adminModule from './classes/admin.js';
+import * as request from 'request';
+import * as rcloadenv from '@google-cloud/rcloadenv';
+import {google} from 'googleapis';
+import * as changesets from 'diff-json';
+const admin = adminModule.admin;
 
 
 
 exports.per_minute_job = event => {
   console.log('=-=-=-=-=-=-=-=-=-=-start deleting expired room-=-=-=-=-=-=-=-=-=-=');
   const query = admin.database().ref('rooms').orderByKey();
-  const usersQuery = admin.database().ref('users').orderByKey();
+  // const usersQuery = admin.database().ref('users').orderByKey();
   query.once('value').then(snapshot => {
     //set expire time limit
     const expireTimeLimit = 60 * 60 * 24;
     //first find expiredRoom
-    let deleteTargetRoomKey = [];
+    const deleteTargetRoomKey = [];
     snapshot.forEach(childSnapShot => {
       const data = childSnapShot.val();
       const nowTime = new Date().getTime();
       if((nowTime / 1000 - data.remainingTime) > expireTimeLimit){
         deleteTargetRoomKey.push(childSnapShot.key)
       }
+      return false;
     });
 
     //if found expired room, delete relatedData
     if (deleteTargetRoomKey.length > 0){
       let promisesArray = [];
-      const usersQuery = admin.database().ref('users').orderByKey();
-      usersQuery.once('value').then(usersSnapshot => {
+      const usersQuery2 = admin.database().ref('users').orderByKey();
+      usersQuery2.once('value').then(usersSnapshot => {
         usersSnapshot.forEach(userSnapshot => {
           const userData = userSnapshot.val();
           if(userData.rooms){
             const filteredRoomsRemovePromises = Object.keys(userData.rooms).filter( elem => {
-              return deleteTargetRoomKey.includes(elem);
+              return deleteTargetRoomKey.indexOf(elem) >= 0;
             }).map( elem => {
               console.log('users/' + userSnapshot.key + '/rooms/' + elem);
               return admin.database().ref('users/' + userSnapshot.key + '/rooms/' + elem).remove();
             });
             promisesArray = promisesArray.concat(filteredRoomsRemovePromises)
           }
+          return false;
         });
         deleteTargetRoomKey.forEach(key => {
           console.log('rooms/' + key);
@@ -50,13 +52,17 @@ exports.per_minute_job = event => {
           promisesArray.push(roomsRef.remove());
           promisesArray.push(messagesRef.remove());
         });
-        Promise.all(promisesArray, () => {
+        Promise.all(promisesArray).then(() => {
           console.log('=-=-=-=-=-=-=-=-=-=-finish deleting expired room-=-=-=-=-=-=-=-=-=-=');
+        }).catch(error => {
+          throw error;
         });
       });
     }else{
       console.log('=-=-=-=-=-=-=-=-=-=-not found expired room-=-=-=-=-=-=-=-=-=-=');
     }
+  }).catch(error => {
+    throw error;
   });
   
 };
@@ -65,7 +71,7 @@ function getAccessToken() {
   return new Promise(function(resolve, reject) {
     rcloadenv.getAndApply('pushAPI', {}).then(key => {
       console.log(key);
-      var jwtClient = new google.auth.JWT(
+      const jwtClient = new google.auth.JWT(
         key.client_email,
         null,
         key.private_key,
@@ -109,13 +115,13 @@ exports.sendPushNoti = (req, res) => {
       new Promise((resolve2, reject2) => {
         request(options, function (error, response, body) {
           if (response.statusCode === 200) {
-            return resolve2({
+            resolve2({
               error,
               response,
               body
             });
           } else {
-            return reject2({
+            reject2({
               error,
               response,
               body
@@ -180,13 +186,13 @@ exports.sendPushNotiOnLocal = (snapshot, context) => {
         new Promise((resolve2, reject2) => {
           request(options, function (error, response, body) {
             if (response.statusCode === 200) {
-              return resolve2({
+              resolve2({
                 error,
                 response,
                 body
               });
             } else {
-              return reject2({
+              reject2({
                 error,
                 response,
                 body
@@ -196,7 +202,7 @@ exports.sendPushNotiOnLocal = (snapshot, context) => {
         }).then(result => {
           console.log("successfully sent push noti:", result);
         }).catch(err => {
-          console.log("failed to send push noti", result)
+          console.log("failed to send push noti", err)
         });
       }).catch(err => {
         console.log("failed getAccessToken");

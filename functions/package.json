@@ -1,13 +1,29 @@
 {
   "name": "functions",
+  "scripts": {
+    "lint": "tslint --project tsconfig.json",
+    "build": "tsc",
+    "serve": "npm run build && firebase serve --only functions",
+    "shell": "npm run build && firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions --project confession-room-frx",
+    "logs": "firebase functions:log --project confession-room-frx"
+  },
   "description": "Cloud Functions for Firebase",
+  "main": "lib/index.js",
   "dependencies": {
     "@google-cloud/rcloadenv": "^0.2.1",
     "diff-json": "^0.1.11",
     "firebase-admin": "^5.13.0",
     "firebase-functions": "^1.1.0",
     "googleapis": "^32.0.0",
-    "request": "^2.88.0"
+    "request": "^2.88.0",
+    "moment": "^2.22.2",
+    "moment-timezone": "^0.5.21"
+  },
+  "devDependencies": {
+    "tslint": "~5.8.0",
+    "typescript": "~2.8.3"
   },
   "private": true
 }
