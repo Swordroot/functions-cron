@@ -110,7 +110,8 @@ export const sendPushNoti = (req, res) => {
             "notification": {
               "body": req.body.message.notification.body,
               "title": req.body.message.notification.title
-            }
+            },
+            "data": req.body.message.data
           }
         }
       };
@@ -161,6 +162,7 @@ export const sendPushNotiOnLocal = (snapshot, context) => {
     console.log('updatedRoom:', roominfo);
     const roomName = roominfo.roomName;
     const targetID = (roominfo.listenID === senderId) ? roominfo.speakID : roominfo.listenID;
+    const userType = roominfo.listenID === senderId ? "speak" : "listen";
     admin.database().ref('users/' + targetID).once('value').then(snapshot3 => {
       const userInfo = snapshot3.val();
       const targetToken = userInfo.fcmtoken;
@@ -170,6 +172,10 @@ export const sendPushNotiOnLocal = (snapshot, context) => {
           "notification": {
             "body": "メッセージが届きました",
             "title": roomName
+          },
+          "data": {
+            "roomId": "1539351276",
+            "userType": `${userType}`
           }
         }
       }
